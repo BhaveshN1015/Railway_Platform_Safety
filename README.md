@@ -2,7 +2,7 @@
 
 # 🚉 Railway Platform Safety Detection System
 
-### Real-time AI surveillance that notifies railway authorities when passengers cross the platform safety line
+### AI-based video analysis that detects passengers crossing the platform safety line and notifies railway authorities via Telegram
 
 [![Python](https://img.shields.io/badge/Python-3.9%2B-blue?style=flat-square&logo=python)](https://python.org)
 [![YOLOv8](https://img.shields.io/badge/YOLOv8n-Object%20Detection-red?style=flat-square)](https://ultralytics.com)
@@ -14,7 +14,7 @@
 
 <br/>
 
-> Monitors platform CCTV footage · Detects persons crossing the yellow safety line · Instantly notifies railway authorities via Telegram with an annotated photo
+> Analyses recorded platform footage · Detects persons crossing the yellow safety line · Notifies railway authorities via Telegram with an annotated photo · Built and tested on recorded video — live stream support planned
 
 <br/>
 
@@ -36,15 +36,15 @@
 
 Every year, hundreds of preventable platform safety incidents occur at Indian railway stations because passengers stand too close to or step beyond the yellow tactile safety line — the boundary that separates the platform from the track area. In most stations, a single officer cannot watch every camera simultaneously, and by the time a violation is noticed, it may already be too late to intervene.
 
-This system solves that problem directly.
+This system is a step toward solving that problem.
 
-It connects to any railway platform camera — a recorded video file, a live webcam, an IP camera, or an RTSP stream — and processes the footage in real time using **YOLOv8** to detect every person in the frame. The moment a person is detected crossing the yellow safety line, the system:
+It processes **recorded platform video footage** using **YOLOv8** to detect every person in the frame. The moment a person is detected crossing the yellow safety line, the system:
 
-1. **Sends a Telegram photo alert** to the railway authority's phone — an annotated screenshot showing exactly who crossed, on which camera, and for how long
+1. **Sends a Telegram photo alert** to the railway authority's phone — an annotated screenshot showing exactly who crossed, on which camera, and how long they were beyond the line
 2. **Saves a timestamped record** to a local SQLite database with entry time, exit time, and dwell duration
 3. **Saves an annotated screenshot** to disk for post-incident review
 
-The authority receives the alert within **1–2 seconds** of the crossing — faster than any human operator watching a screen could react.
+> **Current status:** The system has been built and tested on recorded video footage. Live camera and RTSP stream deployment is the next phase — see [Future Scope](#-future-scope).
 
 ---
 
@@ -53,6 +53,7 @@ The authority receives the alert within **1–2 seconds** of the crossing — fa
 [![Demo Thumbnail](https://img.youtube.com/vi/mON3JvD_tNE/maxresdefault.jpg)](https://youtu.be/mON3JvD_tNE)
 
 **[Watch the full demo on YouTube](https://youtu.be/mON3JvD_tNE)**
+
 
 ---
 
@@ -148,8 +149,8 @@ Without tracking, a new Telegram alert would fire every frame a person stands be
 - **SQLite event logging** — entry time, exit time, dwell seconds, camera ID, screenshot path; zero installation
 - **Aspect-ratio-correct display** — window scales correctly for any resolution (16:9, 4:3, phone vertical)
 - **Interactive calibration tool** — `calibrate.py` analyses any new video and outputs exact config values
-- **Headless mode** — `--no-display` for server or Raspberry Pi deployment
 - **Configurable frame skip** — tune detection rate to match your hardware
+- **Headless mode** — `--no-display` flag available for future server deployment
 
 ---
 
@@ -229,25 +230,25 @@ cd railway-platform-safety
 ### Step 3 — Create a virtual environment
 
 ```bash
-python -m venv venv
+python -m venv ml
 ```
 
 **Activate it — required every time you open a new terminal:**
 
 ```bash
 # Windows (Command Prompt)
-venv\Scripts\activate
+ml\Scripts\activate
 
 # Windows (PowerShell)
-venv\Scripts\Activate.ps1
+ml\Scripts\Activate.ps1
 
 # macOS / Linux
-source venv/bin/activate
+source ml/bin/activate
 ```
 
-You will see `(venv)` at the start of your terminal prompt when active.
+You will see `(ml)` at the start of your terminal prompt when active.
 
-> The `venv/` folder is in `.gitignore` and is never pushed to GitHub. Each person creates their own locally.
+> The `ml/` folder is in `.gitignore` and is never pushed to GitHub. Each person creates their own locally.
 
 ---
 
@@ -266,7 +267,34 @@ pip install lapx
 
 ---
 
-### Step 5 — Verify installation
+### Step 5 — Set up Telegram credentials securely
+
+Your Telegram token and chat ID must never go into `config.py` or GitHub.
+They live in a `.env` file that is in `.gitignore`.
+
+```bash
+# Windows
+copy .env.example .env
+
+# macOS / Linux
+cp .env.example .env
+```
+
+Open `.env` in any text editor and fill in your values:
+
+```
+TELEGRAM_BOT_TOKEN=your_token_here
+TELEGRAM_CHAT_ID=your_chat_id_here
+```
+
+Save it. `config.py` reads these automatically on startup.
+The `.env` file stays on your machine only — it is never committed to GitHub.
+
+> Do not have a bot yet? Set up Telegram first — see [Telegram Bot Setup](#-telegram-bot-setup) — then come back here.
+
+---
+
+### Step 6 — Verify installation
 
 ```bash
 python -c "import cv2, ultralytics, pygame; print('All good — ready to run')"
@@ -274,7 +302,7 @@ python -c "import cv2, ultralytics, pygame; print('All good — ready to run')"
 
 ---
 
-### Step 6 — Run on the included demo video
+### Step 8 — Run on the demo video
 
 ```bash
 python main.py
@@ -284,7 +312,7 @@ A window opens showing Indian Railways platform footage. The green safety line i
 
 ---
 
-### Step 7 — Keyboard controls in the live window
+### Step 9 — Keyboard controls
 
 | Key | Action |
 |---|---|
@@ -298,7 +326,7 @@ A window opens showing Indian Railways platform footage. The green safety line i
 
 ---
 
-### Step 8 — Check the database after running
+### Step 10 — Check the database
 
 ```bash
 sqlite3 logs/violations.db "SELECT track_id, entry_ts, dwell_sec FROM violations;"
@@ -306,24 +334,20 @@ sqlite3 logs/violations.db "SELECT track_id, entry_ts, dwell_sec FROM violations
 
 ---
 
-### Step 9 — Run on your own source
+### Step 11 — Run on a different video
 
 ```bash
-# Your video file
+# Run on a different recorded video file
 python main.py --source videos/your_video.mp4
 
-# USB webcam
-python main.py --source 0
+# Run with a specific camera ID tag for the database
+python main.py --source videos/your_video.mp4 --camera platform-01
 
-# IP camera / RTSP
-python main.py --source rtsp://192.168.1.10:554/stream --camera platform-01
-
-# Android phone — install IP Webcam app, tap Start Server
-python main.py --source http://192.168.1.5:8080/video --camera mobile-01
-
-# Headless — no window, Telegram alerts only
-python main.py --source videos/demo.mp4 --no-display
+# Run without the display window (logs and Telegram only)
+python main.py --source videos/your_video.mp4 --no-display
 ```
+
+> **Note:** Testing has been done on recorded video files only. Live camera and RTSP stream support is in the codebase but has not been tested yet — see [Future Scope](#-future-scope).
 
 ---
 
@@ -359,12 +383,14 @@ python main.py --source videos/demo.mp4 --no-display
    ```
 3. Find `"chat":{"id": 123456789}` — that number is your Chat ID
 
-### Step 3 — Add to config.py
+### Step 3 — Add to your .env file (never config.py)
 
-```python
-TELEGRAM_BOT_TOKEN = "7123456789:AAF_your_token_here"
-TELEGRAM_CHAT_ID   = "123456789"
 ```
+TELEGRAM_BOT_TOKEN=7123456789:AAF_your_token_here
+TELEGRAM_CHAT_ID=123456789
+```
+
+> Putting credentials in `config.py` would push them to GitHub. Always use `.env` — it is in `.gitignore`.
 
 ### Step 4 — Test
 
@@ -438,9 +464,8 @@ TRAIN_DETECT_ENABLED = False
 # Alert deduplication
 VIOLATION_COOLDOWN = 3.0  # Seconds before same person can re-trigger
 
-# Telegram credentials
-TELEGRAM_BOT_TOKEN = ""
-TELEGRAM_CHAT_ID   = ""
+# Telegram credentials — stored in .env, never hardcode here
+# Set TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID in your .env file
 ```
 
 ---
@@ -491,39 +516,42 @@ ORDER BY incidents DESC;
 
 ---
 
-## 🖥️ Deployment Options
+## 🖥️ How to Run
 
-### Laptop or desktop
+### On recorded video (tested)
 ```bash
-python main.py --source videos/demo.mp4
+# Default demo video
+python main.py
+
+# Your own recorded video
+python main.py --source videos/your_video.mp4
+
+# With a camera ID label
+python main.py --source videos/your_video.mp4 --camera platform-01
+
+# Without display window
+python main.py --source videos/your_video.mp4 --no-display
 ```
 
-### Android phone as live camera
-Install **IP Webcam** app, tap Start Server, note the IP:
+### Planned — live camera deployment (not yet tested)
+
+The codebase includes support for the following sources, which are planned for testing in a future phase:
+
 ```bash
-python main.py --source http://192.168.X.X:8080/video --camera mobile-01
+# Laptop or USB webcam
+python main.py --source 0
+
+# Android phone via IP Webcam app
+python main.py --source http://192.168.X.X:8080/video
+
+# IP camera / RTSP stream
+python main.py --source rtsp://admin:password@192.168.1.10:554/stream
+
+# Raspberry Pi headless
+python main.py --source rtsp://camera_ip/stream --no-display
 ```
 
-### Dedicated IP camera (₹800–2,000)
-Any RTSP-capable camera — Tapo C200, TP-Link, Hikvision:
-```bash
-python main.py --source rtsp://admin:password@192.168.1.10:554/stream --camera platform-01
-```
-
-### Raspberry Pi 4 — permanent headless installation
-```bash
-python main.py --source rtsp://camera_ip/stream --no-display --camera pi-01
-```
-Runs 24/7. All alerts via Telegram.
-
-### Cloud VPS — fully remote
-```bash
-nohup python main.py \
-  --source rtsp://camera_ip/stream \
-  --no-display \
-  --camera remote-01 \
-  > logs/run.log 2>&1 &
-```
+> These commands are functional in the code but have not been tested on real hardware yet.
 
 ---
 
@@ -547,14 +575,16 @@ Expected 3–5× faster on GTX 1060+.
 
 ---
 
-## 💡 Real-World Impact
+## 💡 Intended Impact
 
-| Situation | Without this system | With this system |
+> The following reflects the system's design intent. Testing so far has been on recorded video. Live deployment and validation is the next phase.
+
+| Situation | Current approach | What this system aims to provide |
 |---|---|---|
-| Person steps beyond yellow line | Officer notices in 30–120 seconds, if watching | Telegram photo alert in under 2 seconds |
-| Incident at 3 AM | No officer present | Alert sent, screenshot saved, DB logged |
-| Post-incident review | Hours of manual footage review | SQL query — all events in seconds |
-| Multiple cameras | 1–2 watched effectively by one officer | One process per camera, any number of cameras |
+| Person steps beyond yellow line | Officer notices in 30–120 seconds, if watching that camera | Telegram photo alert within seconds of detection |
+| Incident outside working hours | No officer present to act | Alert sent, screenshot saved, DB logged automatically |
+| Post-incident review | Hours of manual footage review | Query SQLite — all events with timestamps and screenshots |
+| Multiple cameras | 1–2 watched effectively by one person | One process per camera feed, any number of cameras |
 
 ---
 
@@ -562,21 +592,24 @@ Expected 3–5× faster on GTX 1060+.
 
 | Feature | Description |
 |---|---|
-| Multi-camera dashboard | Single screen, all cameras, unified alert log |
+| **Live camera testing** | Test and validate with USB webcam, then IP camera, then RTSP stream |
+| **Multi-camera dashboard** | Single screen, all cameras, unified alert log |
 | Fall detection | YOLOv8-pose to detect passengers falling near the edge |
 | Unattended luggage | Alert when a bag is left for more than N seconds |
 | Live web dashboard | Browser view of live feed and today's events |
 | Scheduled reports | Daily PDF report of all incidents to station manager |
 | Edge deployment | Optimised TFLite/ONNX model for Raspberry Pi / Jetson Nano |
-| DVR/NVR integration | Direct connection to existing station CCTV infrastructure |
+| **DVR/NVR integration** | Direct connection to existing station CCTV infrastructure |
+| **RTSP stream validation** | Test against real IP cameras and station CCTV feeds |
 
 ---
 
 ## ⚠️ Limitations
 
-- **Pretrained model** — YOLOv8n on COCO. No custom railway dataset. Works well in most conditions; lighting and camera angle affect accuracy.
+- **Tested on recorded video only** — The system has been built and validated on pre-recorded platform footage. Live camera and RTSP stream testing is planned but not yet done.
+- **Pretrained model** — YOLOv8n on COCO. No custom railway dataset fine-tuning. Detection quality depends on lighting and camera angle.
 - **One camera per process** — Run separate instances with different `--camera` IDs for multi-camera setups.
-- **RTSP requires authorised access** — Architecturally ready for live streams; actual station CCTV integration needs network permission from the railway authority.
+- **RTSP and live stream support** — Code is written to support RTSP and live feeds but has not been tested on real hardware yet. This is the immediate next step.
 - **No facial recognition** — Persons detected by bounding box only. No biometric identification. Intentional.
 - **Train detection off by default** — Enable only when a train is actively moving into frame; leave off for stationary trains to avoid false alerts.
 
@@ -611,7 +644,7 @@ MIT License — free to use, modify, and distribute with attribution.
 
 ## 👤 About
 
-Built to address a real safety gap at Indian railway stations — the absence of automated, real-time monitoring of the yellow platform safety line. The system gives railway authorities an instant photo alert on their phone so they can act in seconds, not minutes.
+Built to address a real safety gap at Indian railway stations — the absence of automated monitoring of the yellow platform safety line. Developed and tested on recorded platform footage, the system detects persons crossing the safety line and delivers Telegram photo alerts to railway authorities. Live camera deployment is the planned next phase.
 
 **Built with:** Python · YOLOv8 · ByteTrack · OpenCV · Hough Transform · Telegram Bot API · SQLite · threading
 
