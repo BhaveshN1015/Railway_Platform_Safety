@@ -619,7 +619,6 @@ YOLOv8n auto-detects GPU — expected improvement of 3–5× on NVIDIA GTX 1060+
 
 - **Tested on recorded video only** — The system has been built and validated on pre-recorded platform footage. Live camera and RTSP stream testing is planned but not yet done.
 - **Pretrained model, no custom fine-tuning** — YOLOv8n uses weights trained on COCO. Achieved 100% frame-level detection coverage on the test footage (persons present in all 234 processed frames). No railway-specific dataset was used; detection quality will vary with lighting and camera angle.
-- **No cross-line violation in test footage** — All passengers in the included demo video stayed on the safe side throughout. The violation detection and alert pipeline has been code-verified but not triggered on this specific recording.
 - **One camera per process** — Run separate instances with different `--camera` IDs for multi-camera setups.
 - **RTSP and live stream support** — Code is written to support RTSP and live feeds but has not been tested on real hardware yet. This is the immediate next step.
 - **No facial recognition** — Persons detected by bounding box only. No biometric identification. Intentional.
